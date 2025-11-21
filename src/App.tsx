@@ -13,6 +13,7 @@ import Pipelines from "./pages/Pipelines";
 import PipelineDetails from "./pages/PipelineDetails";
 import Deployments from "./pages/Deployments";
 import Settings from "./pages/Settings";
+import ApiDocs from "./pages/ApiDocs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/api-docs"
+              element={
+                <ProtectedRoute>
+                  <ApiDocs />
                 </ProtectedRoute>
               }
             />

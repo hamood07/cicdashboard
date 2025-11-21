@@ -1,1 +1,10 @@
 project_id = "erekvlqjibmzrfrzzqam"
+
+[functions.github-webhook]
+verify_jwt = false
+
+[functions.gitlab-webhook]
+verify_jwt = false
+
+[functions.jenkins-webhook]
+verify_jwt = false
