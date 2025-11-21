@@ -82,6 +82,7 @@ const ApiDocs = () => {
                     <li>Navigate to "Webhooks" and click "Add webhook"</li>
                     <li>Paste the endpoint URL above</li>
                     <li>Set Content type to "application/json"</li>
+                    <li><strong>Secret:</strong> Enter the value you configured for GITHUB_WEBHOOK_SECRET</li>
                     <li>Select "Let me select individual events" and check "Workflow runs"</li>
                     <li>Click "Add webhook"</li>
                   </ol>
@@ -132,6 +133,7 @@ const ApiDocs = () => {
                     <li>Go to your GitLab project settings</li>
                     <li>Navigate to "Webhooks"</li>
                     <li>Paste the endpoint URL above</li>
+                    <li><strong>Secret token:</strong> Enter the value you configured for GITLAB_WEBHOOK_SECRET</li>
                     <li>Select the "Pipeline events" trigger</li>
                     <li>Click "Add webhook"</li>
                   </ol>
@@ -182,7 +184,8 @@ const ApiDocs = () => {
                     <li>Go to your job configuration</li>
                     <li>Add a "Job Notifications" post-build action</li>
                     <li>Set Format to "JSON"</li>
-                    <li>Add the endpoint URL above</li>
+                    <li>Add the endpoint URL with token: <code className="text-xs bg-muted px-1 py-0.5 rounded">{webhookBaseUrl}/jenkins-webhook?token=YOUR_JENKINS_SECRET</code></li>
+                    <li>Or add custom header: <code className="text-xs bg-muted px-1 py-0.5 rounded">X-Jenkins-Token: YOUR_JENKINS_SECRET</code></li>
                     <li>Select events: "Job Started", "Job Completed", "Job Finalized"</li>
                   </ol>
                 </div>

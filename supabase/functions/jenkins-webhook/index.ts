@@ -4,8 +4,10 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-jenkins-token',
 };
+
+const WEBHOOK_SECRET = Deno.env.get('JENKINS_WEBHOOK_SECRET');
 
 // Validation schema for Jenkins webhook
 const jenkinsBuildSchema = z.object({
@@ -31,6 +33,16 @@ serve(async (req) => {
   }
 
   try {
+    // Verify webhook token
+    const token = req.headers.get('x-jenkins-token') || new URL(req.url).searchParams.get('token');
+    if (!token || token !== WEBHOOK_SECRET) {
+      console.error('Invalid webhook token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);

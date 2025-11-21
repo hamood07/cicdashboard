@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-gitlab-token, x-gitlab-event',
 };
 
+const WEBHOOK_SECRET = Deno.env.get('GITLAB_WEBHOOK_SECRET');
+
 // Validation schema for GitLab webhook
 const gitlabPipelineSchema = z.object({
   object_kind: z.literal('pipeline'),
@@ -36,6 +38,16 @@ serve(async (req) => {
   }
 
   try {
+    // Verify webhook token
+    const token = req.headers.get('x-gitlab-token');
+    if (!token || token !== WEBHOOK_SECRET) {
+      console.error('Invalid webhook token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
