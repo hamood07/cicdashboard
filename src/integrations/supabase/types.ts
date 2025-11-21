@@ -14,7 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      deployments: {
+        Row: {
+          created_at: string | null
+          deployed_at: string | null
+          deployed_by: string
+          environment: string
+          id: string
+          pipeline_id: string
+          project_id: string
+          status: string
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          deployed_at?: string | null
+          deployed_by: string
+          environment: string
+          id?: string
+          pipeline_id: string
+          project_id: string
+          status: string
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          deployed_at?: string | null
+          deployed_by?: string
+          environment?: string
+          id?: string
+          pipeline_id?: string
+          project_id?: string
+          status?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployments_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          logs: string | null
+          pipeline_id: string
+          started_at: string | null
+          status: string
+          step_name: string
+          step_order: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          logs?: string | null
+          pipeline_id: string
+          started_at?: string | null
+          status: string
+          step_name: string
+          step_order: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          logs?: string | null
+          pipeline_id?: string
+          started_at?: string | null
+          status?: string
+          step_name?: string
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_steps_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipelines: {
+        Row: {
+          branch: string
+          commit_hash: string
+          completed_at: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          project_id: string
+          run_number: number
+          started_at: string | null
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          branch: string
+          commit_hash: string
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          project_id: string
+          run_number: number
+          started_at?: string | null
+          status: string
+          triggered_by: string
+        }
+        Update: {
+          branch?: string
+          commit_hash?: string
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          project_id?: string
+          run_number?: number
+          started_at?: string | null
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          repository_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          repository_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          repository_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
