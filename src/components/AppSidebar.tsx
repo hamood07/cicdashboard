@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, Rocket, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, GitBranch, Rocket, Settings, LogOut, Code } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Pipelines", url: "/pipelines", icon: GitBranch },
   { title: "Deployments", url: "/deployments", icon: Rocket },
+  { title: "API Docs", url: "/api-docs", icon: Code },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
