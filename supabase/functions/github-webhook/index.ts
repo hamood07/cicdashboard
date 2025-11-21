@@ -1,11 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hub-signature-256, x-github-event',
 };
+
+const WEBHOOK_SECRET = Deno.env.get('GITHUB_WEBHOOK_SECRET');
+
+async function verifySignature(payload: string, signature: string | null): Promise<boolean> {
+  if (!signature || !WEBHOOK_SECRET) return false;
+  
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(WEBHOOK_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+  const expectedSignature = 'sha256=' + Array.from(new Uint8Array(signatureBytes))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return signature === expectedSignature;
+}
 
 // Validation schema for GitHub webhook
 const githubWorkflowRunSchema = z.object({
@@ -39,12 +62,25 @@ serve(async (req) => {
   }
 
   try {
+    // Verify webhook signature
+    const signature = req.headers.get('x-hub-signature-256');
+    const rawBody = await req.text();
+    
+    const isValid = await verifySignature(rawBody, signature);
+    if (!isValid) {
+      console.error('Invalid webhook signature');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid signature' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse and validate payload
-    const payload = await req.json();
+    const payload = JSON.parse(rawBody);
     console.log('Received GitHub webhook event');
 
     // Validate the webhook payload
