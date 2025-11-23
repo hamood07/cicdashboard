@@ -25,8 +25,10 @@ interface Pipeline {
   status: BuildStatus;
   duration_seconds: number | null;
   started_at: string;
+  project_id: string;
   projects: {
     name: string;
+    repository_url: string | null;
   };
   profiles: {
     full_name: string | null;
@@ -53,7 +55,7 @@ const PipelineDetails = () => {
       .from("pipelines")
       .select(`
         *,
-        projects(name)
+        projects(name, repository_url)
       `)
       .eq("id", id)
       .single();
@@ -164,10 +166,39 @@ const PipelineDetails = () => {
                 <span className="font-mono text-sm">{pipeline.commit_hash.substring(0, 7)}</span>
               </div>
             </div>
-            <Button variant="outline" onClick={fetchPipelineDetails}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              {pipeline.status === 'failed' && pipeline.projects.repository_url && (
+                <Button 
+                  variant="default"
+                  onClick={() => {
+                    const repoUrl = pipeline.projects.repository_url;
+                    if (repoUrl) {
+                      window.open(`${repoUrl}/actions`, '_blank');
+                    }
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry on GitHub
+                </Button>
+              )}
+              {pipeline.projects.repository_url && (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const repoUrl = pipeline.projects.repository_url;
+                    if (repoUrl) {
+                      window.open(`${repoUrl}/actions/runs/${pipeline.run_number}`, '_blank');
+                    }
+                  }}
+                >
+                  View on GitHub
+                </Button>
+              )}
+              <Button variant="outline" onClick={fetchPipelineDetails}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -195,7 +226,24 @@ const PipelineDetails = () => {
             <h2 className="text-xl font-semibold mb-4">Build Steps</h2>
             <div className="space-y-4">
               {steps.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No steps recorded for this pipeline</p>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    No detailed steps available. View full logs on GitHub for complete build information.
+                  </p>
+                  {pipeline.projects.repository_url && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        const repoUrl = pipeline.projects.repository_url;
+                        if (repoUrl) {
+                          window.open(`${repoUrl}/actions`, '_blank');
+                        }
+                      }}
+                    >
+                      View Full Logs on GitHub
+                    </Button>
+                  )}
+                </div>
               ) : (
                 steps.map((step) => (
                   <div
