@@ -1,34 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hub-signature-256, x-github-event',
 };
-
-const WEBHOOK_SECRET = Deno.env.get('GITHUB_WEBHOOK_SECRET');
-
-async function verifySignature(payload: string, signature: string | null): Promise<boolean> {
-  if (!signature || !WEBHOOK_SECRET) return false;
-  
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(WEBHOOK_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  
-  const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-  const expectedSignature = 'sha256=' + Array.from(new Uint8Array(signatureBytes))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  
-  return signature === expectedSignature;
-}
 
 // Validation schema for GitHub webhook
 const githubWorkflowRunSchema = z.object({
@@ -62,9 +39,35 @@ serve(async (req) => {
   }
 
   try {
-    // Check event type first
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Extract webhook token from URL path
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/');
+    const webhookToken = pathParts[pathParts.length - 1];
+
+    console.log(`Received webhook request with token: ${webhookToken}`);
+
+    // Verify the webhook token and get the user
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('webhook_token', webhookToken)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Invalid webhook token:', profileError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid webhook token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    // Check event type
     const eventType = req.headers.get('x-github-event');
-    console.log(`Received GitHub webhook event: ${eventType}`);
+    console.log(`Received GitHub webhook event: ${eventType} for user: ${profile.user_id}`);
     
     // Only process workflow_run events
     if (eventType !== 'workflow_run') {
@@ -75,22 +78,7 @@ serve(async (req) => {
       );
     }
 
-    // Verify webhook signature
-    const signature = req.headers.get('x-hub-signature-256');
     const rawBody = await req.text();
-    
-    const isValid = await verifySignature(rawBody, signature);
-    if (!isValid) {
-      console.error('Invalid webhook signature');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid signature' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse and validate payload
     const payload = JSON.parse(rawBody);
@@ -113,30 +101,21 @@ serve(async (req) => {
       validatedData.workflow_run.conclusion
     );
 
-    // Get or create project
+    // Get or create project for this user
     let { data: project } = await supabase
       .from('projects')
       .select('id, created_by')
       .eq('name', validatedData.repository.name)
+      .eq('created_by', profile.user_id)
       .single();
 
     if (!project) {
-      // Get the first user to assign as creator
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .limit(1);
-
-      if (!users || users.length === 0) {
-        throw new Error('No users found. Please create a user first.');
-      }
-
       const { data: newProject, error: createError } = await supabase
         .from('projects')
         .insert({
           name: validatedData.repository.name,
           repository_url: validatedData.repository.html_url,
-          created_by: users[0].user_id,
+          created_by: profile.user_id,
         })
         .select('id, created_by')
         .single();
@@ -157,14 +136,7 @@ serve(async (req) => {
       durationSeconds = Math.floor((endTime - startTime) / 1000);
     }
 
-    // Get user profile for sender
-    const { data: senderProfile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .limit(1)
-      .single();
-
-    const triggeredBy = senderProfile?.user_id || project.created_by;
+    const triggeredBy = profile.user_id;
 
     // Create or update pipeline
     const { data: existingPipeline } = await supabase
