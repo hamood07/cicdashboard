@@ -43,13 +43,22 @@ serve(async (req) => {
       );
     }
 
+    // Parse and validate payload
+    const payload = await req.json();
+    console.log(`Received Jenkins webhook event: ${payload.name} - ${payload.build?.phase}`);
+
+    // Verify payload has required fields
+    if (!payload.build || !payload.build.phase) {
+      console.log('Ignoring non-build event or incomplete payload');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Event type not processed' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Parse and validate payload
-    const payload = await req.json();
-    console.log('Received Jenkins webhook event');
 
     // Validate the webhook payload
     const validatedData = jenkinsBuildSchema.parse(payload);

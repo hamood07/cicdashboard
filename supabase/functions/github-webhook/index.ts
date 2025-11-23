@@ -62,6 +62,19 @@ serve(async (req) => {
   }
 
   try {
+    // Check event type first
+    const eventType = req.headers.get('x-github-event');
+    console.log(`Received GitHub webhook event: ${eventType}`);
+    
+    // Only process workflow_run events
+    if (eventType !== 'workflow_run') {
+      console.log(`Ignoring non-workflow_run event: ${eventType}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Event type not processed' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
     // Verify webhook signature
     const signature = req.headers.get('x-hub-signature-256');
     const rawBody = await req.text();
@@ -81,7 +94,6 @@ serve(async (req) => {
 
     // Parse and validate payload
     const payload = JSON.parse(rawBody);
-    console.log('Received GitHub webhook event');
 
     // Validate the webhook payload
     const validatedData = githubWorkflowRunSchema.parse(payload);

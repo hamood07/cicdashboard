@@ -48,13 +48,23 @@ serve(async (req) => {
       );
     }
 
+    // Parse and validate payload
+    const payload = await req.json();
+    const eventType = req.headers.get('x-gitlab-event');
+    console.log(`Received GitLab webhook event: ${eventType}`);
+
+    // Only process pipeline events
+    if (payload.object_kind !== 'pipeline') {
+      console.log(`Ignoring non-pipeline event: ${payload.object_kind || eventType}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Event type not processed' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Parse and validate payload
-    const payload = await req.json();
-    console.log('Received GitLab webhook event');
 
     // Validate the webhook payload
     const validatedData = gitlabPipelineSchema.parse(payload);
