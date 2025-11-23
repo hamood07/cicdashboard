@@ -181,19 +181,6 @@ const PipelineDetails = () => {
                   Retry on GitHub
                 </Button>
               )}
-              {pipeline.projects.repository_url && (
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    const repoUrl = pipeline.projects.repository_url;
-                    if (repoUrl) {
-                      window.open(`${repoUrl}/actions/runs/${pipeline.run_number}`, '_blank');
-                    }
-                  }}
-                >
-                  View on GitHub
-                </Button>
-              )}
               <Button variant="outline" onClick={fetchPipelineDetails}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
@@ -223,29 +210,50 @@ const PipelineDetails = () => {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Build Steps</h2>
-            <div className="space-y-4">
-              {steps.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    No detailed steps available. View full logs on GitHub for complete build information.
-                  </p>
-                  {pipeline.projects.repository_url && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        const repoUrl = pipeline.projects.repository_url;
-                        if (repoUrl) {
-                          window.open(`${repoUrl}/actions`, '_blank');
-                        }
-                      }}
-                    >
-                      View Full Logs on GitHub
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                steps.map((step) => (
+            <h2 className="text-xl font-semibold mb-4">Pipeline Logs</h2>
+            <div className="space-y-3 font-mono text-sm bg-muted/30 p-4 rounded-lg">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Pipeline ID:</span>
+                <span>{pipeline.id}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Run Number:</span>
+                <span>#{pipeline.run_number}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Branch:</span>
+                <span>{pipeline.branch}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Commit Hash:</span>
+                <span>{pipeline.commit_hash}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Status:</span>
+                <span className={pipeline.status === 'success' ? 'text-success' : pipeline.status === 'failed' ? 'text-error' : 'text-warning'}>
+                  {pipeline.status.toUpperCase()}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Started At:</span>
+                <span>{new Date(pipeline.started_at).toLocaleString()}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Duration:</span>
+                <span>{formatDuration(pipeline.duration_seconds)}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-muted-foreground">Triggered By:</span>
+                <span>{pipeline.profiles?.full_name || "Unknown"}</span>
+              </div>
+            </div>
+          </Card>
+
+          {steps.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Build Steps</h2>
+              <div className="space-y-4">
+                {steps.map((step) => (
                   <div
                     key={step.id}
                     className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors"
@@ -263,10 +271,10 @@ const PipelineDetails = () => {
                       {formatDuration(step.duration_seconds)}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>
