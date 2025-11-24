@@ -1,28 +1,44 @@
-name: Build and Push Docker Image
+name: CI/CD with Docker on Self-Hosted Runner
 
 on:
   push:
-    branches:
-      - main  # Runs when you push to main branch
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/dashboard:latest .
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/dashboard"
+          TAG="latest"
+          docker build -t $IMAGE_NAME:$TAG .
 
-      - name: Push Docker image
+      - name: Push Docker image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/dashboard:latest
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/dashboard"
+          TAG="latest"
+          docker push $IMAGE_NAME:$TAG
+
+      - name: Stop old container if exists
+        run: |
+          if [ "$(docker ps -aq -f name=sample-node-project)" ]; then
+            docker stop sample-node-project || true
+            docker rm sample-node-project || true
+          fi
+
+      - name: Run new container
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/dashboard"
+          TAG="latest"
+          docker pull $IMAGE_NAME:$TAG
+          docker run -d --name sample-node-project -p 3000:3000 $IMAGE_NAME:$TAG
