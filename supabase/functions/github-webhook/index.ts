@@ -160,9 +160,48 @@ serve(async (req) => {
         .eq('id', existingPipeline.id);
 
       if (updateError) throw updateError;
+
+      // Auto-create deployment if pipeline succeeded and is on main/master/production branch
+      if (pipelineStatus === 'success' && 
+          validatedData.workflow_run.status === 'completed' &&
+          ['main', 'master', 'production'].includes(validatedData.workflow_run.head_branch.toLowerCase())) {
+        
+        // Determine environment from branch name
+        const environment = validatedData.workflow_run.head_branch.toLowerCase() === 'production' 
+          ? 'production' 
+          : 'staging';
+
+        // Check if deployment already exists for this pipeline
+        const { data: existingDeployment } = await supabase
+          .from('deployments')
+          .select('id')
+          .eq('pipeline_id', existingPipeline.id)
+          .single();
+
+        if (!existingDeployment) {
+          // Create deployment record
+          const { error: deploymentError } = await supabase
+            .from('deployments')
+            .insert({
+              project_id: project.id,
+              pipeline_id: existingPipeline.id,
+              environment: environment,
+              version: validatedData.workflow_run.head_sha.substring(0, 7),
+              status: 'success',
+              deployed_by: triggeredBy,
+              deployed_at: new Date().toISOString(),
+            });
+
+          if (deploymentError) {
+            console.error('Error creating deployment:', deploymentError);
+          } else {
+            console.log('Auto-created deployment for successful pipeline');
+          }
+        }
+      }
     } else {
       // Create new pipeline
-      const { error: insertError } = await supabase
+      const { data: newPipeline, error: insertError } = await supabase
         .from('pipelines')
         .insert({
           project_id: project.id,
@@ -176,9 +215,41 @@ serve(async (req) => {
           completed_at: validatedData.workflow_run.status === 'completed' 
             ? new Date().toISOString() 
             : null,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Auto-create deployment if pipeline succeeded and is on main/master/production branch
+      if (pipelineStatus === 'success' && 
+          validatedData.workflow_run.status === 'completed' &&
+          ['main', 'master', 'production'].includes(validatedData.workflow_run.head_branch.toLowerCase())) {
+        
+        // Determine environment from branch name
+        const environment = validatedData.workflow_run.head_branch.toLowerCase() === 'production' 
+          ? 'production' 
+          : 'staging';
+
+        // Create deployment record
+        const { error: deploymentError } = await supabase
+          .from('deployments')
+          .insert({
+            project_id: project.id,
+            pipeline_id: newPipeline.id,
+            environment: environment,
+            version: validatedData.workflow_run.head_sha.substring(0, 7),
+            status: 'success',
+            deployed_by: triggeredBy,
+            deployed_at: new Date().toISOString(),
+          });
+
+        if (deploymentError) {
+          console.error('Error creating deployment:', deploymentError);
+        } else {
+          console.log('Auto-created deployment for successful pipeline');
+        }
+      }
     }
 
     return new Response(
