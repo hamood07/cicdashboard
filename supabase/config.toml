@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.jenkins-webhook]
 verify_jwt = false
+
+[functions.deployment-webhook]
+verify_jwt = false
