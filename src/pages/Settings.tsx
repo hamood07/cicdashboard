@@ -13,7 +13,8 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [webhookToken, setWebhookToken] = useState<string>("");
-  const [copied, setCopied] = useState(false);
+  const [copiedGithub, setCopiedGithub] = useState(false);
+  const [copiedDeployment, setCopiedDeployment] = useState(false);
 
   useEffect(() => {
     const fetchWebhookToken = async () => {
@@ -42,16 +43,27 @@ const Settings = () => {
     ? `https://erekvlqjibmzrfrzzqam.supabase.co/functions/v1/github-webhook/${webhookToken}`
     : "";
 
-  const copyToClipboard = () => {
-    if (!webhookUrl) return;
+  const deploymentWebhookUrl = webhookToken 
+    ? `https://erekvlqjibmzrfrzzqam.supabase.co/functions/v1/deployment-webhook/${webhookToken}`
+    : "";
+
+  const copyToClipboard = (url: string, type: 'github' | 'deployment') => {
+    if (!url) return;
     
-    navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
+    navigator.clipboard.writeText(url);
+    
+    if (type === 'github') {
+      setCopiedGithub(true);
+      setTimeout(() => setCopiedGithub(false), 2000);
+    } else {
+      setCopiedDeployment(true);
+      setTimeout(() => setCopiedDeployment(false), 2000);
+    }
+    
     toast({
       title: "Copied!",
       description: "Webhook URL copied to clipboard",
     });
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -118,17 +130,78 @@ const Settings = () => {
                     className="font-mono text-sm"
                   />
                   <Button 
-                    onClick={copyToClipboard}
+                    onClick={() => copyToClipboard(webhookUrl, 'github')}
                     variant="outline"
                     size="icon"
                     disabled={!webhookUrl}
                   >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedGithub ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Use this URL in your GitHub repository webhook settings. Set the content type to <code className="px-1 py-0.5 bg-muted rounded">application/json</code> and select "Workflow runs" as the event trigger.
                 </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 mt-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 pb-6 border-b border-border">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Webhook className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold">Deployment Webhook Configuration</p>
+                <p className="text-sm text-muted-foreground">Track deployments from any CD tool or custom script</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="deploymentWebhookUrl">Your Deployment Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="deploymentWebhookUrl" 
+                    type="text" 
+                    value={deploymentWebhookUrl}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button 
+                    onClick={() => copyToClipboard(deploymentWebhookUrl, 'deployment')}
+                    variant="outline"
+                    size="icon"
+                    disabled={!deploymentWebhookUrl}
+                  >
+                    {copiedDeployment ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Send deployment events to this endpoint. Supports ArgoCD, custom scripts, or any CD tool.
+                </p>
+                
+                <div className="mt-4 bg-muted p-4 rounded-md">
+                  <p className="text-xs font-medium mb-2">Example cURL request:</p>
+                  <pre className="text-xs overflow-x-auto">
+{`curl -X POST ${deploymentWebhookUrl} \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "project_name": "my-app",
+    "environment": "production",
+    "version": "v1.2.3",
+    "status": "success",
+    "pipeline_run_number": 42,
+    "deployed_at": "2024-01-01T12:00:00Z"
+  }'`}
+                  </pre>
+                </div>
+
+                <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                  <p><strong>Required fields:</strong> project_name, environment (production/staging/development), version, status (success/failed/pending/cancelled)</p>
+                  <p><strong>Optional fields:</strong> pipeline_run_number (links to pipeline), deployed_at (defaults to now)</p>
+                </div>
               </div>
             </div>
           </div>
